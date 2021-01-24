@@ -31,33 +31,32 @@ public class AlgorithmicPart extends Application {
         launch(args);
     }
 
-    private static ArrayList<File> createListOfFile(String pathname) throws IOException {
-        List<File> contentOfFolder = null;
-        ArrayList<File> filesFromFolder = null;
 
-        try {
-            contentOfFolder = Files.walk(Paths.get(pathname))
-                    .filter(Files::isRegularFile)
-                    .map(Path::toFile)
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        filesFromFolder = new ArrayList<File>(contentOfFolder);
-
-        return filesFromFolder;
-    }
 
     @Override
     public void start(Stage primaryStage) {
+        String pathToHealthy = "C:/Users/consol/Documents/agh/analiza_dzwieku/Analiva_dzwieku_2/resources/inputs/healthy";
+        String pathToCOPD = "C:/Users/consol/Documents/agh/analiza_dzwieku/Analiva_dzwieku_2/resources/inputs/copd";
+        String pathToTestGroup = "C:/Users/consol/Documents/agh/analiza_dzwieku/Analiva_dzwieku_2/resources/inputs/test";
+        //output file for output images
+        String pathToHealthyImages = "C:/Users/consol/Documents/agh/analiza_dzwieku/Analiva_dzwieku_2/resources/images/healthy/";
+        String pathToCOPDImages = "C:/Users/consol/Documents/agh/analiza_dzwieku/Analiva_dzwieku_2/resources/images/copd/";
+        String pathToTestImages = "C:/Users/consol/Documents/agh/analiza_dzwieku/Analiva_dzwieku_2/resources/images/test/";
 
+        generateImages(primaryStage, pathToHealthy, pathToHealthyImages);
+        generateImages(primaryStage, pathToCOPD, pathToCOPDImages);
+        generateImages(primaryStage, pathToTestGroup, pathToTestImages);
+    }
+
+    private void generateImages(Stage primaryStage, String pathToDatabase, String pathnameOfOutputImage) {
+        //output of divided files from database
+        String pathnameOfFile = "C:/Users/consol/Documents/agh/analiza_dzwieku/test/";
+        clearDirectory(pathnameOfFile);
+        clearDirectory(pathnameOfOutputImage);
         ArrayList<ArrayList<File>> contentsOfFolders = new ArrayList<ArrayList<File>>();
         ArrayList<File> contentFoldersToSave = null;
         ReaderWAVE readerToSave = null;
-        ArrayList<ReaderWAVE> readers = new ArrayList<>();
         PreemphasisOfSignal preemphasedSignal = null;
-        ArrayList<PreemphasisOfSignal> preparedSignals = new ArrayList<>();
         ArrayList<MFCC> mfccCoefficients = new ArrayList<>();
         final int SAMPLERATE = 44100;
         MFCC mfccToSave = null;
@@ -68,84 +67,33 @@ public class AlgorithmicPart extends Application {
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Split file into small chunks
-        //path to the database directory with .wav and .txt files
-        String pathToDatabase = "C:\\Users\\consol\\Documents\\agh\\analiza_dzwieku\\wave\\archive\\Respiratory_Sound_Database\\Respiratory_Sound_Database\\audio_and_txt_files";
-        //output of divided files from database
-        String pathnameOfFile = "C:/Users/consol/Documents/agh/analiza_dzwieku/test";
-        //output file for output images
-        String pathnameOfOutputImage = "C:/Users/consol/Documents/agh/analiza_dzwieku/image";
+
         //Split long files to small chunks
-        splitFilesByTxtfileContent(pathToDatabase, pathnameOfFile + "/");
+        splitFilesByTxtfileContent(pathToDatabase, pathnameOfFile);
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         try {
                 contentFoldersToSave = new ArrayList<File>();
                 contentFoldersToSave = createListOfFile(pathnameOfFile);
                 contentsOfFolders.add(contentFoldersToSave);
 
-        } catch (IOException e) {
-            e.printStackTrace();
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Information Dialog");
-            alert.setHeaderText(null);
-            alert.setContentText("Invalid pathname!");
-        }
-
-        try {
             for (ArrayList<File> filesFromFolder : contentsOfFolders) {
                 readerToSave = new ReaderWAVE();
                 readerToSave.detectionOfWords(filesFromFolder);
-                readers.add(readerToSave);
-                readerToSave = null;
-            }
-        } catch (IOException | WavFileException | NullPointerException e) {
-            e.printStackTrace();
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Information Dialog");
-            alert.setHeaderText(null);
-            alert.setContentText("Invalid files!");
-        }
-
-
-        try {
-            for (ReaderWAVE readerToRun : readers) {
                 preemphasedSignal = new PreemphasisOfSignal();
-                preemphasedSignal.preemphaseSignals(readerToRun.detectedWords);
-                preparedSignals.add(preemphasedSignal);
-                preemphasedSignal = null;
-            }
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Information Dialog");
-            alert.setHeaderText(null);
-            alert.setContentText("Invalid pathname!");
-        }
-
-        try {
-            for (PreemphasisOfSignal sample : preparedSignals) {
+                preemphasedSignal.preemphaseSignals(readerToSave.detectedWords);
                 mfccToSave = new MFCC(SAMPLERATE);
-                mfccToSave.calculateMFCCCoefficients(sample.preemphasedSignals);
-                mfccCoefficients.add(mfccToSave);
-                mfccToSave = null;
+                mfccToSave.calculateMFCCCoefficients(preemphasedSignal.preemphasedSignals);
+                images = new ImageOperator();
+                images.setPathnames(pathnameOfOutputImage);
+                images.createImage(mfccToSave.normalizedMFCCCoefficients);
+                imagesOfWords.add(images);
             }
-        } catch (NullPointerException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             /*Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Information Dialog");
             alert.setHeaderText(null);
             alert.setContentText("Invalid pathname!");*/
-        }
-
-        ChartPrinter.print(primaryStage, mfccCoefficients.get(0).window, 0.001, "firsttest");
-
-        int noOfWord = 0;
-
-        for (MFCC word : mfccCoefficients) {
-            images = new ImageOperator();
-            images.setPathnames(pathnameOfOutputImage);
-            images.createImage(word.normalizedMFCCCoefficients);
-            imagesOfWords.add(images);
-            images = null;
         }
     }
 
@@ -247,5 +195,33 @@ public class AlgorithmicPart extends Application {
 
     private SoundContext getDataFromLine(String line){
         return new SoundContext(line.split("\t")[0],line.split("\t")[1]);
+    }
+
+    private static ArrayList<File> createListOfFile(String pathname) throws IOException {
+        List<File> contentOfFolder = null;
+        ArrayList<File> filesFromFolder = null;
+
+        try {
+            contentOfFolder = Files.walk(Paths.get(pathname))
+                    .filter(Files::isRegularFile)
+                    .map(Path::toFile)
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        filesFromFolder = new ArrayList<File>(contentOfFolder);
+
+        return filesFromFolder;
+    }
+
+    private void clearDirectory(String pathToDir) {
+        try {
+            List<File> filesToDelete = createListOfFile(pathToDir);
+            filesToDelete.stream().forEach(a -> a.delete());
+        } catch (Exception e) {
+
+        }
+
     }
 }

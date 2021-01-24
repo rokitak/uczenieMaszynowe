@@ -113,8 +113,8 @@ public class ImageOperator {
                 MINWIDTH = tmpWidth;
         }
 
-        scale[0] = tmpHigh;
-        scale[1] = tmpWidth;
+        scale[0] = 30;
+        scale[1] = 100;
 
         return scale;
     }

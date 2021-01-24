@@ -23,6 +23,7 @@ public class PreemphasisOfSignal {
         } else {
             //defensive programming
         }
+        preemphasedSignals = new ArrayList<>();
         for (double[] sample : signalsToAnalyse) {
             double[] signalToSave = new double[sample.length];
             for (int i = 0; i < sample.length; i++) {
